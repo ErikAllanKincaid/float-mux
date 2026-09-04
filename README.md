@@ -31,7 +31,7 @@ Choose one of the two options
 > This is a fork that adds mouse and keyboard support on the bare Linux
 > virtual console (via `gpm`), a drawn pointer, mouse/keyboard passthrough to
 > programs in a window, and mouse text selection. It is published as GitHub
-> releases and source, not on crates.io — the `float-mux` crate there is the
+> releases and source, not on crates.io; the `float-mux` crate there is the
 > upstream package without these changes.
 
 ### 1. Downloading a release from GitHub
@@ -60,22 +60,22 @@ Release binaries are built by GitHub Actions on a version tag; see
 
 ### Keyboard shortcuts
 
-| Action             | Default       |
-|--------------------|---------------|
-| New window         | `Alt+c`       |
-| Focus next window  | `Alt+n`       |
-| Focus previous     | `Alt+p`       |
-| Focus by number    | `Alt+1`–`9`   |
-| Move window left   | `Alt+h` / `Alt+←` |
-| Move window down   | `Alt+j` / `Alt+↓` |
-| Move window up     | `Alt+k` / `Alt+↑` |
-| Move window right  | `Alt+l` / `Alt+→` |
+| Action             | Default                 |
+| ------------------ | ----------------------- |
+| New window         | `Alt+c`                 |
+| Focus next window  | `Alt+n`                 |
+| Focus previous     | `Alt+p`                 |
+| Focus by number    | `Alt+1`-`9`             |
+| Move window left   | `Alt+h` / `Alt+←`       |
+| Move window down   | `Alt+j` / `Alt+↓`       |
+| Move window up     | `Alt+k` / `Alt+↑`       |
+| Move window right  | `Alt+l` / `Alt+→`       |
 | Resize left edge   | `Alt+H` / `Alt+Shift+←` |
 | Resize bottom edge | `Alt+J` / `Alt+Shift+↓` |
 | Resize top edge    | `Alt+K` / `Alt+Shift+↑` |
 | Resize right edge  | `Alt+L` / `Alt+Shift+→` |
-| Close window       | `Alt+x`       |
-| Quit Float         | `Alt+q`       |
+| Close window       | `Alt+x`                 |
+| Quit Float         | `Alt+q`                 |
 
 ### Mouse
 
@@ -100,7 +100,7 @@ GUI session is present. Set `FLOAT_GPM_VC=<n>` to force a specific console,
 
 #### Mouse in child programs
 
-Mouse-aware programs run in a window (`mc`, `vim`, `htop`, `less`, …) receive
+Mouse-aware programs run in a window (`mc`, `vim`, `htop`, `less`, ...) receive
 the mouse when they enable xterm mouse reporting: clicks on the border and
 title bar still move and resize the window, clicks inside go to the program.
 Children whose `TERM` would be `linux`, `screen`, or `tmux` are started with
