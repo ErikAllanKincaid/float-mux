@@ -92,6 +92,48 @@ impl WindowManager {
             }
         }
 
+        // Text selection: reverse-video the selected cells, but only while the
+        // selection's window is the focused one. Stamped into back_buf so the
+        // normal frame diff draws and erases it.
+        if let Some(sel) = self.selection {
+            let geom = self
+                .windows
+                .get(self.focused)
+                .filter(|w| w.id == sel.window_id)
+                .map(|w| {
+                    (
+                        w.content_x(),
+                        w.content_y(),
+                        w.content_w() as i32,
+                        w.content_h() as i32,
+                    )
+                });
+            if let Some((cx, cy, cw, ch)) = geom {
+                let (a, b) = sel.ordered();
+                for r in a.1..=b.1 {
+                    if r < cy || r >= cy + ch || r < 0 || r >= rows as i32 {
+                        continue;
+                    }
+                    let (start, end) = if r == a.1 && r == b.1 {
+                        (a.0, b.0)
+                    } else if r == a.1 {
+                        (a.0, cx + cw - 1)
+                    } else if r == b.1 {
+                        (cx, b.0)
+                    } else {
+                        (cx, cx + cw - 1)
+                    };
+                    for c in start..=end {
+                        if c < cx || c >= cx + cw || c < 0 || c >= cols as i32 {
+                            continue;
+                        }
+                        let cell = &mut self.back_buf[r as usize][c as usize];
+                        *cell = reverse_video(*cell);
+                    }
+                }
+            }
+        }
+
         // Software mouse pointer: reverse-video the cell under the pointer.
         // Stamped into back_buf so the normal frame diff draws and erases it.
         if self.software_cursor
@@ -99,16 +141,8 @@ impl WindowManager {
             && (cx as usize) < cols as usize
             && (cy as usize) < rows as usize
         {
-            let c = &mut self.back_buf[cy as usize][cx as usize];
-            let solid = |color| match color {
-                Color::Reset => None,
-                other => Some(other),
-            };
-            *c = Cell {
-                ch: c.ch,
-                fg: solid(c.bg).unwrap_or(Color::Black),
-                bg: solid(c.fg).unwrap_or(Color::White),
-            };
+            let cell = &mut self.back_buf[cy as usize][cx as usize];
+            *cell = reverse_video(*cell);
         }
 
         let mut stdout = io::stdout();
@@ -226,5 +260,19 @@ impl WindowManager {
         std::mem::swap(&mut self.front_buf, &mut self.back_buf);
 
         Ok(())
+    }
+}
+
+/// Swap a cell's foreground and background, resolving `Reset` to concrete
+/// colors so the effect is visible on default-colored cells too.
+fn reverse_video(c: Cell) -> Cell {
+    let solid = |color| match color {
+        Color::Reset => None,
+        other => Some(other),
+    };
+    Cell {
+        ch: c.ch,
+        fg: solid(c.bg).unwrap_or(Color::Black),
+        bg: solid(c.fg).unwrap_or(Color::White),
     }
 }

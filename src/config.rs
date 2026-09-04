@@ -113,6 +113,9 @@ pub struct Config {
     /// Forward mouse events to a child program that has enabled xterm mouse
     /// reporting (mc, vim, htop, …) instead of using them for window management.
     pub mouse_passthrough: bool,
+    /// Drag inside a window to select text; middle-click pastes it. Hold Shift
+    /// to select even in a program that has mouse reporting on.
+    pub mouse_selection: bool,
 }
 impl Default for Config {
     fn default() -> Self {
@@ -125,6 +128,7 @@ impl Default for Config {
             poll_interval_ms: 16,
             disable_mouse: false,
             mouse_passthrough: true,
+            mouse_selection: true,
         }
     }
 }
