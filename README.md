@@ -52,6 +52,9 @@ cargo build --release
 
 The binary will be at `target/release/float-mux`.
 
+Run `float-mux` to start; `float-mux --help` prints usage and the default key
+bindings, `float-mux --version` prints the version.
+
 Release binaries are built by GitHub Actions on a version tag; see
 [RELEASING.md](RELEASING.md).
 

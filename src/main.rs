@@ -35,7 +35,53 @@ use crossterm::{
 
 use wm::WindowManager;
 
+const HELP: &str = "\
+float-mux - floating window multiplexer for your terminal
+
+Usage: float-mux [OPTIONS]
+
+Options:
+  -h, --help       Print this help and exit
+  -V, --version    Print version and exit
+
+Run with no arguments to start. Needs a real terminal (raw mode + alternate
+screen). On a bare Linux console it uses the gpm daemon for the mouse.
+
+Default key bindings (all configurable):
+  Alt+c            New window
+  Alt+n / Alt+p    Focus next / previous window
+  Alt+1..9         Focus window by number
+  Alt+h/j/k/l      Move window        (or Alt+Arrows)
+  Alt+H/J/K/L      Resize window      (or Alt+Shift+Arrows)
+  Alt+w            Pin / unpin window
+  Alt+x            Close window
+  Alt+q            Quit
+
+Mouse: drag the title bar to move, edges to resize, click to focus. Drag
+inside a window to select text; middle-click pastes. Programs that request
+mouse reporting receive the mouse (hold Shift to select instead).
+
+Config: $XDG_CONFIG_HOME/float/config.toml or ~/.config/float/config.toml
+";
+
 fn main() -> anyhow::Result<()> {
+    if let Some(arg) = std::env::args().nth(1) {
+        match arg.as_str() {
+            "-h" | "--help" => {
+                print!("{HELP}");
+                return Ok(());
+            }
+            "-V" | "--version" => {
+                println!("float-mux {}", env!("CARGO_PKG_VERSION"));
+                return Ok(());
+            }
+            other => {
+                eprintln!("float-mux: unexpected argument '{other}'\nTry 'float-mux --help'.");
+                std::process::exit(2);
+            }
+        }
+    }
+
     let config = config::load();
     let (cols, rows) = terminal::size()?;
     let mut wm = WindowManager::new(config, cols, rows)?;
