@@ -13,6 +13,10 @@ enum MouseOp {
         offset_x: i32,
         offset_y: i32,
     },
+    /// Dragging out a text selection inside a window's content area.
+    Select {
+        window_id: usize,
+    },
     ResizeLeft {
         window_id: usize,
         anchor_right: i32,
@@ -32,6 +36,26 @@ enum MouseOp {
     },
 }
 
+/// A rectangular-ish text selection inside one window, in absolute screen
+/// cell coordinates `(col, row)`.
+#[derive(Clone, Copy)]
+pub(crate) struct Selection {
+    pub(crate) window_id: usize,
+    pub(crate) anchor: (i32, i32),
+    pub(crate) head: (i32, i32),
+}
+
+impl Selection {
+    /// `(start, end)` in reading order (row-major).
+    pub(crate) fn ordered(&self) -> ((i32, i32), (i32, i32)) {
+        if (self.anchor.1, self.anchor.0) <= (self.head.1, self.head.0) {
+            (self.anchor, self.head)
+        } else {
+            (self.head, self.anchor)
+        }
+    }
+}
+
 pub struct WindowManager {
     pub(crate) windows: Vec<Window>,
     pub(crate) focused: usize,
@@ -49,6 +73,10 @@ pub struct WindowManager {
     /// While a press is forwarded to a child that requested mouse reporting,
     /// the id of that window, so drag/release keep going to it.
     mouse_fwd: Option<usize>,
+    /// Current text selection (drawn while its window is focused); the text is
+    /// copied into `clipboard` on mouse-up and pasted on a middle click.
+    pub(crate) selection: Option<Selection>,
+    clipboard: String,
     pub(crate) term_cols: u16,
     pub(crate) term_rows: u16,
     pub(crate) front_buf: Vec<Vec<Cell>>,
@@ -71,6 +99,8 @@ impl WindowManager {
             software_cursor: false,
             cursor_pos: None,
             mouse_fwd: None,
+            selection: None,
+            clipboard: String::new(),
             drag: None,
             term_cols,
             term_rows,
@@ -338,6 +368,7 @@ impl WindowManager {
         self.term_cols = term_cols;
         self.front_buf = vec![vec![Cell::default(); term_cols as usize]; term_rows as usize];
         self.back_buf = vec![vec![Cell::default(); term_cols as usize]; term_rows as usize];
+        self.selection = None;
         self.dirty = true;
     }
 
@@ -362,8 +393,13 @@ impl WindowManager {
 
         // Passthrough: if a child program enabled mouse reporting, events over
         // its content area (not its border) go to it as xterm sequences rather
-        // than driving Float's own move/resize.
-        if self.config.mouse_passthrough && self.drag.is_none() {
+        // than driving Float's own move/resize. Holding Shift bypasses this so
+        // the mouse can still select text (xterm convention).
+        let shift = event.modifiers.contains(KeyModifiers::SHIFT);
+        if self.config.mouse_passthrough
+            && self.drag.is_none()
+            && (self.mouse_fwd.is_some() || !shift)
+        {
             let target = match self.mouse_fwd {
                 Some(id) => self.windows.iter().position(|w| w.id == id),
                 None => (0..self.windows.len()).rev().find(|&i| {
@@ -400,6 +436,10 @@ impl WindowManager {
 
         match event.kind {
             MouseEventKind::Down(MouseButton::Left) => {
+                // Any left press dismisses a previous selection.
+                if self.selection.take().is_some() {
+                    self.dirty = true;
+                }
                 for i in (0..self.windows.len()).rev() {
                     let w = &self.windows[i];
                     if w.hit_title_bar(event.column, event.row) {
@@ -460,6 +500,18 @@ impl WindowManager {
                     }
                     if w.contains_point(event.column, event.row) {
                         self.focused = bring_to_front(&mut self.windows, i);
+                        let fw = &self.windows[self.focused];
+                        let wid = fw.id;
+                        let in_content = fw.content_hit(event.column, event.row);
+                        if self.config.mouse_selection && in_content {
+                            let p = (event.column as i32, event.row as i32);
+                            self.selection = Some(Selection {
+                                window_id: wid,
+                                anchor: p,
+                                head: p,
+                            });
+                            self.drag = Some(MouseOp::Select { window_id: wid });
+                        }
                         self.dirty = true;
                         break;
                     }
@@ -560,12 +612,77 @@ impl WindowManager {
                         self.dirty = true;
                     }
                 }
+                Some(MouseOp::Select { window_id }) => {
+                    if let Some(sel) = self.selection.as_mut()
+                        && sel.window_id == window_id
+                    {
+                        sel.head = (event.column as i32, event.row as i32);
+                        self.dirty = true;
+                    }
+                }
                 None => {}
             },
             MouseEventKind::Up(MouseButton::Left) => {
+                if matches!(self.drag, Some(MouseOp::Select { .. })) {
+                    self.copy_selection();
+                    self.dirty = true;
+                }
                 self.drag = None;
             }
+            MouseEventKind::Down(MouseButton::Middle) => {
+                self.paste_into_focused()?;
+            }
             _ => {}
+        }
+        Ok(())
+    }
+
+    /// Extract the current selection's text into the clipboard, or drop the
+    /// selection if it is empty (e.g. a bare click).
+    fn copy_selection(&mut self) {
+        let Some(sel) = self.selection else { return };
+        if sel.anchor == sel.head {
+            // A bare click, not a drag.
+            self.selection = None;
+            return;
+        }
+        let Some(win) = self.windows.iter().find(|w| w.id == sel.window_id) else {
+            self.selection = None;
+            return;
+        };
+        let (a, b) = sel.ordered();
+        let cw = (win.content_w() as i32).max(1);
+        let ch = (win.content_h() as i32).max(1);
+        let sr = (a.1 - win.content_y()).clamp(0, ch - 1);
+        let er = (b.1 - win.content_y()).clamp(0, ch - 1);
+        let sc = (a.0 - win.content_x()).clamp(0, cw);
+        // `contents_between`'s end column is exclusive; +1 to include the cell.
+        let ec = (b.0 - win.content_x() + 1).clamp(0, cw);
+        let text = win
+            .screen()
+            .contents_between(sr as u16, sc as u16, er as u16, ec as u16)
+            .trim_end()
+            .to_string();
+        if text.is_empty() {
+            self.selection = None;
+        } else {
+            self.clipboard = text;
+        }
+    }
+
+    /// Paste the clipboard into the focused window, honoring bracketed paste.
+    fn paste_into_focused(&mut self) -> anyhow::Result<()> {
+        if self.clipboard.is_empty() || self.windows.is_empty() {
+            return Ok(());
+        }
+        let body = self.clipboard.replace('\n', "\r");
+        let w = &mut self.windows[self.focused];
+        if w.screen().bracketed_paste() {
+            w.write(b"\x1b[200~")?;
+            w.write(body.as_bytes())?;
+            w.write(b"\x1b[201~")?;
+        } else {
+            w.write(body.as_bytes())?;
         }
         Ok(())
     }

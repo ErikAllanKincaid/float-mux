@@ -17,6 +17,10 @@ disable_mouse = false
 # the mouse for window management.
 mouse_passthrough = true
 
+# Drag inside a window to select text; middle-click pastes it into the focused
+# window. Hold Shift to select even when the program has mouse reporting on.
+mouse_selection = true
+
 [theme]
 # ANSI color index (0–255).
 focused_border = 14

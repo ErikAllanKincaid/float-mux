@@ -103,6 +103,14 @@ title bar still move and resize the window, clicks inside go to the program.
 Children whose `TERM` would be `linux`, `screen`, or `tmux` are started with
 `TERM=xterm-256color`. Disable passthrough with `mouse_passthrough = false`.
 
+#### Selecting and pasting text
+
+Drag inside a window to select text; the selection is shown reverse-video while
+that window is focused. **Middle-click** pastes it into the focused window
+(bracketed-paste aware). In a program that has mouse reporting on, hold
+**Shift** while dragging to select instead of sending the drag to the program.
+Disable with `mouse_selection = false`.
+
 ## Configuration
 
 Float reads `~/.config/float/config.toml`. Check out the `config.example.toml` file in the repository.
