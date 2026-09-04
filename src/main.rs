@@ -3,11 +3,27 @@ mod compositor;
 mod config;
 mod escape;
 mod frame;
-mod gpm;
 mod input;
 mod pty;
 mod window;
 mod wm;
+
+/// gpm is a Linux virtual-console facility; elsewhere the mouse comes from
+/// crossterm and this is an inert stub so the crate still builds.
+#[cfg(target_os = "linux")]
+mod gpm;
+#[cfg(not(target_os = "linux"))]
+mod gpm {
+    pub struct Gpm;
+    impl Gpm {
+        pub fn open() -> Option<Self> {
+            None
+        }
+        pub fn drain_events(&mut self) -> Vec<crossterm::event::MouseEvent> {
+            Vec::new()
+        }
+    }
+}
 
 use std::io;
 use std::time::Duration;
