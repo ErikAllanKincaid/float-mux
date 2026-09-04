@@ -37,7 +37,7 @@ Choose one of the two options
 ### 1. Downloading a release from GitHub
 
 Binaries for every version tag are in the
-[releases](https://github.com/ErikAllanKincaid/float-mux/releases/latest)
+https://github.com/ErikAllanKincaid/float-mux/releases/latest
 section.
 
 ### 2. Building from source
