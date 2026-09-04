@@ -26,30 +26,27 @@
 
 ## Getting Started
 
-Choose one of the three options
+Choose one of the two options
 
-### 1. Installing via crates.io (recommended)
+> This is a fork that adds mouse and keyboard support on the bare Linux
+> virtual console (via `gpm`), a drawn pointer, mouse/keyboard passthrough to
+> programs in a window, and mouse text selection. It is published as GitHub
+> releases and source, not on crates.io — the `float-mux` crate there is the
+> upstream package without these changes.
 
-Float is available as a binary crate on crates.io under the name `float-mux` (`float` was already taken, sadly...)
+### 1. Downloading a release from GitHub
 
-Install it with cargo and run it
+Binaries for every version tag are in the
+[releases](https://github.com/ErikAllanKincaid/float-mux/releases/latest)
+section.
 
-```bash
-cargo install float-mux
-float-mux
-```
-
-### 2. Downloading release from GitHub
-
-You can find the binaries for every version tag in the ![releases](https://github.com/Henktorius/float/releases/latest) section
-
-### 3. Building from source
+### 2. Building from source
 
 Clone the repository and build with Cargo
 
 ```bash
-git clone https://github.com/henktorius/float
-cd float
+git clone https://github.com/ErikAllanKincaid/float-mux
+cd float-mux
 cargo build --release
 ```
 
