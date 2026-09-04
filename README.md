@@ -52,6 +52,9 @@ cargo build --release
 
 The binary will be at `target/release/float-mux`.
 
+Release binaries are built by GitHub Actions on a version tag; see
+[RELEASING.md](RELEASING.md).
+
 ### Keyboard shortcuts
 
 | Action             | Default       |
